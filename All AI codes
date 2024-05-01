@@ -1,0 +1,473 @@
+
+//Simple A star code
+
+
+
+import heapq
+
+class Node:
+    def __init__(self, position, parent=None):
+        self.position = position
+        self.parent = parent
+        self.g = 0  # cost from start node to current node
+        self.h = 0  # heuristic estimate of cost from current node to goal node
+        self.f = 0  # total cost
+
+    def __eq__(self, other):
+        return self.position == other.position
+
+    def __lt__(self, other):
+        return self.f < other.f
+
+    def __hash__(self):
+        return hash(self.position)
+
+def astar(grid, start, end):
+    open_list = []
+    closed_set = set()
+
+    start_node = Node(start)
+    end_node = Node(end)
+
+    heapq.heappush(open_list, start_node)
+
+    while open_list:
+        current_node = heapq.heappop(open_list)
+        closed_set.add(current_node)
+
+        if current_node == end_node:
+            path = []
+            while current_node:
+                path.append(current_node.position)
+                current_node = current_node.parent
+            return path[::-1]
+
+        children = []
+        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+
+            if node_position[0] < 0 or node_position[0] >= len(grid) or \
+               node_position[1] < 0 or node_position[1] >= len(grid[0]):
+                continue
+
+            if grid[node_position[0]][node_position[1]] == 1:
+                continue
+
+            new_node = Node(node_position, current_node)
+            children.append(new_node)
+
+        for child in children:
+            if child in closed_set:
+                continue
+
+            child.g = current_node.g + 1
+            child.h = abs(child.position[0] - end_node.position[0]) + abs(child.position[1] - end_node.position[1])
+            child.f = child.g + child.h
+
+            for open_node in open_list:
+                if child == open_node and child.f > open_node.f:
+                    break
+            else:
+                heapq.heappush(open_list, child)
+
+    return None  # No path found
+
+# Example usage:
+grid = [[0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0]]
+
+start = (0, 0)
+end = (4, 4)
+
+path = astar(grid, start, end)
+print(path)
+
+
+
+
+
+
+
+
+
+
+//IDA Star
+
+
+
+
+
+class Node:
+    def __init__(self, state, parent=None, action=None, cost=0, heuristic=0):
+        self.state = state
+        self.parent = parent
+        self.action = action
+        self.cost = cost
+        self.heuristic = heuristic
+        self.f = cost + heuristic
+
+def ida_star(root, goal_test, successors, heuristic, max_depth=float('inf')):
+    threshold = heuristic(root.state)
+    path = [root]
+
+    while True:
+        result, threshold = search(path, 0, goal_test, successors, heuristic, threshold, max_depth)
+        if result == "FOUND":
+            return path
+        if result == float('inf'):
+            return None
+
+def search(path, cost, goal_test, successors, heuristic, threshold, max_depth):
+    node = path[-1]
+    f = cost + heuristic(node.state)
+    if f > threshold:
+        return f, threshold
+    if goal_test(node.state):
+        return "FOUND", threshold
+    if cost == max_depth:
+        return float('inf'), threshold
+
+    min_val = float('inf')
+    for action, state, step_cost in successors(node.state):
+        if any(child.state == state for child in path):
+            continue
+        child = Node(state, node, action, cost + step_cost, heuristic(state))
+        path.append(child)
+        result, new_threshold = search(path, cost + step_cost, goal_test, successors, heuristic, threshold, max_depth)
+        if result == "FOUND":
+            return "FOUND", threshold
+        if result < min_val:
+            min_val = result
+        path.pop()
+
+    return min_val, threshold
+
+# Example usage:
+def goal_test(state):
+    return state == (3, 3)  # Example goal state
+
+def successors(state):
+    x, y = state
+    return [
+        ('up', (x, y + 1), 1),
+        ('down', (x, y - 1), 1),
+        ('left', (x - 1, y), 1),
+        ('right', (x + 1, y), 1)
+    ]
+
+def manhattan_distance(state):
+    goal_state = (3, 3)  # Example goal state
+    return abs(state[0] - goal_state[0]) + abs(state[1] - goal_state[1])
+
+start_state = (0, 0)  # Example start state
+
+root_node = Node(start_state)
+path = ida_star(root_node, goal_test, successors, manhattan_distance)
+print(path)
+
+
+
+
+
+
+
+
+
+
+//simple Hill Climbing
+
+
+
+import random
+
+def simple_hill_climbing(problem):
+    current_solution = problem.initial_solution()
+    while True:
+        neighbors = problem.neighbors(current_solution)
+        best_neighbor = max(neighbors, key=lambda neighbor: problem.value(neighbor))
+        if problem.value(best_neighbor) <= problem.value(current_solution):
+            return current_solution
+        current_solution = best_neighbor
+
+# Example usage:
+class Problem:
+    def __init__(self):
+        self.current_solution = [random.randint(0, 100) for _ in range(5)]  # Example initial solution
+
+    def initial_solution(self):
+        return self.current_solution
+
+    def neighbors(self, solution):
+        neighbors = []
+        for i in range(len(solution)):
+            neighbor = list(solution)
+            neighbor[i] += random.choice([-1, 1])  # Perturb the current solution
+            neighbors.append(neighbor)
+        return neighbors
+
+    def value(self, solution):
+        # Example objective function to maximize (you can replace this with your own function)
+        return sum(solution)
+
+problem = Problem()
+solution = simple_hill_climbing(problem)
+print("Optimal solution:", solution)
+print("Objective value:", problem.value(solution))
+
+
+
+
+
+
+
+
+
+
+
+//Steepest-Ascent Hill Climbing:
+
+
+
+import random
+
+class Problem:
+    def __init__(self):
+        self.current_solution = [random.randint(0, 100) for _ in range(5)]  # Example initial solution
+
+    def initial_solution(self):
+        return self.current_solution
+
+    def neighbors(self, solution):
+        neighbors = []
+        for i in range(len(solution)):
+            neighbor = list(solution)
+            neighbor[i] += random.choice([-1, 1])  # Perturb the current solution
+            neighbors.append(neighbor)
+        return neighbors
+
+    def value(self, solution):
+        # Example objective function to maximize (you can replace this with your own function)
+        return sum(solution)
+
+def steepest_ascent_hill_climbing(problem):
+    current_solution = problem.initial_solution()
+    while True:
+        neighbors = problem.neighbors(current_solution)
+        best_neighbor = max(neighbors, key=lambda neighbor: problem.value(neighbor))
+        if problem.value(best_neighbor) <= problem.value(current_solution):
+            return current_solution
+        current_solution = best_neighbor
+
+# Example usage:
+problem = Problem()
+solution = steepest_ascent_hill_climbing(problem)
+print("Optimal solution:", solution)
+print("Objective value:", problem.value(solution))
+
+
+
+
+
+
+
+
+
+
+//First-Choice Hill Climbing:
+
+
+
+import random
+
+class Problem:
+    def __init__(self):
+        self.current_solution = [random.randint(0, 100) for _ in range(5)]  # Example initial solution
+
+    def initial_solution(self):
+        return self.current_solution
+
+    def neighbors(self, solution):
+        neighbors = []
+        for i in range(len(solution)):
+            neighbor = list(solution)
+            neighbor[i] += random.choice([-1, 1])  # Perturb the current solution
+            neighbors.append(neighbor)
+        return neighbors
+
+    def value(self, solution):
+        # Example objective function to maximize (you can replace this with your own function)
+        return sum(solutiAon)
+
+def first_choice_hill_climbing(problem):
+    current_solution = problem.initial_solution()
+    while True:
+        neighbors = problem.neighbors(current_solution)
+        random.shuffle(neighbors)  # Shuffle the order of neighbors randomly
+        for neighbor in neighbors:
+            if problem.value(neighbor) >= problem.value(current_solution):
+                current_solution = neighbor
+                break
+        else:
+            return current_solution
+
+# Example usage:
+problem = Problem()
+solution = first_choice_hill_climbing(problem)
+print("Optimal solution:", solution)
+print("Objective value:", problem.value(solution))
+
+
+
+
+
+
+
+//dfs
+
+class Graph:
+    def __init__(self):
+        self.graph = {}
+
+    def add_edge(self, u, v):
+        if u not in self.graph:
+            self.graph[u] = []
+        self.graph[u].append(v)
+
+    def dfs_util(self, v, visited):
+        visited.add(v)
+        print(v, end=' ')
+
+        if v in self.graph:
+            for neighbor in self.graph[v]:
+                if neighbor not in visited:
+                    self.dfs_util(neighbor, visited)
+
+    def dfs(self, start):
+        visited = set()
+        self.dfs_util(start, visited)
+
+# Example usage:
+graph = Graph()
+graph.add_edge(0, 1)
+graph.add_edge(0, 2)
+graph.add_edge(1, 2)
+graph.add_edge(2, 0)
+graph.add_edge(2, 3)
+graph.add_edge(3, 3)
+
+print("Depth-First Traversal:")
+graph.dfs(2)
+
+
+
+
+
+
+
+
+
+
+//bfs
+
+
+
+from collections import deque
+
+class Graph:
+    def __init__(self):
+        self.graph = {}
+
+    def add_edge(self, u, v):
+        if u not in self.graph:
+            self.graph[u] = []
+        self.graph[u].append(v)
+
+    def bfs(self, start):
+        visited = set()
+        queue = deque([start])
+        visited.add(start)
+
+        while queue:
+            vertex = queue.popleft()
+            print(vertex, end=' ')
+
+            if vertex in self.graph:
+                for neighbor in self.graph[vertex]:
+                    if neighbor not in visited:
+                        queue.append(neighbor)
+                        visited.add(neighbor)
+
+# Example usage:
+graph = Graph()
+graph.add_edge(0, 1)
+graph.add_edge(0, 2)
+graph.add_edge(1, 2)
+graph.add_edge(2, 0)
+graph.add_edge(2, 3)
+graph.add_edge(3, 3)
+
+print("Breadth-First Traversal:")
+graph.bfs(2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+//best first Search
+
+
+
+import heapq
+
+class Graph:
+    def __init__(self):
+        self.graph = {}
+
+    def add_edge(self, u, v, weight):
+        if u not in self.graph:
+            self.graph[u] = []
+        self.graph[u].append((v, weight))
+
+    def best_first_search(self, start, goal):
+        visited = set()
+        priority_queue = [(0, start)]
+        
+        while priority_queue:
+            cost, node = heapq.heappop(priority_queue)
+            if node == goal:
+                return True
+            
+            visited.add(node)
+            for neighbor, weight in self.graph.get(node, []):
+                if neighbor not in visited:
+                    heapq.heappush(priority_queue, (weight, neighbor))
+        
+        return False
+
+# Example usage:
+graph = Graph()
+graph.add_edge('A', 'B', 3)
+graph.add_edge('A', 'C', 6)
+graph.add_edge('B', 'D', 2)
+graph.add_edge('B', 'E', 5)
+graph.add_edge('C', 'F', 9)
+
+start_node = 'A'
+goal_node = 'F'
+
+if graph.best_first_search(start_node, goal_node):
+    print(f"There exists a path from {start_node} to {goal_node}")
+else:
+    print(f"There is no path from {start_node} to {goal_node}")
+
